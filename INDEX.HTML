@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- This line makes the page scale properly on phones -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Dashboard</title>
+
+<style>
+/* ---------- 1. COLOURS (change these to restyle the whole app) ---------- */
+:root {
+  --bg: #0f1218;          /* page background */
+  --panel: #171c26;       /* cards and panels */
+  --panel-2: #1e2430;     /* inputs, hover states */
+  --border: #2a3242;
+  --text: #e6e9ef;
+  --muted: #8b93a5;
+  --accent: #d4a853;      /* warm gold, the main accent */
+
+  /* One subtle colour per category */
+  --eee: #e0a458;
+  --coding: #6fb1d6;
+  --science: #7cc4a0;
+  --creative: #b497d6;
+}
+
+/* ---------- 2. BASE STYLES ---------- */
+* { box-sizing: border-box; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;   /* academic feel */
+  line-height: 1.5;
+  padding: 16px;
+}
+h1, h2, h3 { font-weight: normal; letter-spacing: 0.3px; }
+button, input, select, textarea { font-family: inherit; font-size: 1rem; }
+
+.container { max-width: 1100px; margin: 0 auto; }
+
+/* ---------- 3. HEADER ---------- */
+header {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  justify-content: space-between; align-items: center;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+header h1 { font-size: 1.7rem; }
+header h1 span { color: var(--accent); }
+.stats { display: flex; gap: 20px; color: var(--muted); font-size: 0.9rem; }
+.stats b { color: var(--text); font-size: 1.2rem; display: block; }
+
+/* ---------- 4. BUTTONS ---------- */
+.btn {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 14px; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: #1a1a1a; border-color: var(--accent); }
+.btn.danger:hover { border-color: #d46a6a; color: #d46a6a; }
+.btn.small { padding: 4px 10px; font-size: 0.85rem; }
+
+/* ---------- 5. TOOLBAR AND FILTERS ---------- */
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: space-between; margin: 16px 0;
+}
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filters .btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- 6. PROJECT GRID ---------- */
+/* Phone: 1 column. Laptop: as many 300px+ columns as fit. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-top: 3px solid var(--cat, var(--accent));
+  border-radius: 8px; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.card h3 { font-size: 1.2rem; }
+.card p.desc { color: var(--muted); font-size: 0.9rem; }
+
+.meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.8rem; }
+.tag {
+  border: 1px solid var(--cat, var(--border)); color: var(--cat, var(--muted));
+  border-radius: 99px; padding: 2px 10px;
+}
+.tag.status { border-color: var(--border); color: var(--muted); }
+
+/* Category colours: the card picks one via data-category */
+[data-category="EEE"] { --cat: var(--eee); }
+[data-category="Coding"] { --cat: var(--coding); }
+[data-category="Science"] { --cat: var(--science); }
+[data-category="Creative"] { --cat: var(--creative); }
+
+/* ---------- 7. PROGRESS BAR ---------- */
+.progress-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); }
+.bar { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+.bar > div { height: 100%; background: var(--cat, var(--accent)); transition: width 0.3s; }
+
+/* ---------- 8. TASK LIST ---------- */
+.tasks { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tasks li { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; }
+.tasks li.done span { text-decoration: line-through; color: var(--muted); }
+.tasks input[type="checkbox"] { margin-top: 5px; accent-color: var(--accent); }
+.card-actions { display: flex; gap: 8px; margin-top: auto; }
+
+.empty { color: var(--muted); text-align: center; padding: 40px 0; grid-column: 1 / -1; }
+
+/* ---------- 9. POP-UP FORM ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+  display: none; align-items: center; justify-content: center; padding: 16px;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+}
+.modal h2 { margin-bottom: 14px; }
+label { display: block; margin: 12px 0 4px; color: var(--muted); font-size: 0.85rem; }
+input[type="text"], select, textarea {
+  width: 100%; background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 8px;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+textarea { min-height: 90px; resize: vertical; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.hint { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--border);
+         display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- ===== HEADER WITH SUMMARY STATS ===== -->
+  <header>
+    <h1>Project <span>Dashboard</span></h1>
+    <div class="stats">
+      <div><b id="statTotal">0</b>Total</div>
+      <div><b id="statActive">0</b>In progress</div>
+      <div><b id="statDone">0</b>Completed</div>
+    </div>
+  </header>
+
+  <!-- ===== FILTERS + ADD BUTTON ===== -->
+  <div class="toolbar">
+    <div class="filters" id="filters"></div>
+    <button class="btn primary" id="addBtn">+ Add project</button>
+  </div>
+
+  <!-- ===== PROJECT CARDS GET INSERTED HERE ===== -->
+  <main class="grid" id="grid"></main>
+
+  <!-- ===== BACKUP BUTTONS ===== -->
+  <footer>
+    <span>Backup:</span>
+    <button class="btn small" id="exportBtn">Export to file</button>
+    <button class="btn small" id="importBtn">Import from file</button>
+    <input type="file" id="importFile" accept=".json" hidden>
+  </footer>
+</div>
+
+<!-- ===== ADD / EDIT FORM (hidden until opened) ===== -->
+<div class="modal-backdrop" id="modal">
+  <form class="modal" id="form">
+    <h2 id="modalTitle">Add project</h2>
+
+    <label for="fTitle">Title</label>
+    <input type="text" id="fTitle" required maxlength="80">
+
+    <label for="fDesc">Description (optional)</label>
+    <input type="text" id="fDesc" maxlength="200">
+
+    <label for="fCategory">Category</label>
+    <select id="fCategory">
+      <option>EEE</option><option>Coding</option>
+      <option>Science</option><option>Creative</option>
+    </select>
+
+    <label for="fStatus">Status</label>
+    <select id="fStatus">
+      <option>Idea</option><option>In progress</option>
+      <option>On hold</option><option>Completed</option>
+    </select>
+
+    <label for="fTasks">Next tasks</label>
+    <textarea id="fTasks" placeholder="One task per line"></textarea>
+    <div class="hint">One task per line. Tick them off on the card; progress updates automatically.</div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn" id="cancelBtn">Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* =====================================================================
+   JAVASCRIPT: the app's behaviour.
+   Big idea: keep all projects in ONE list called `projects`.
+   Whenever it changes: (1) save it, (2) redraw the screen from it.
+   ===================================================================== */
+
+const STORAGE_KEY = "projectDashboard.v1";           // the name of our saved data
+const CATEGORIES = ["All", "EEE", "Coding", "Science", "Creative"];
+
+let projects = loadProjects();    // the list of all projects
+let currentFilter = "All";        // which category is being shown
+let editingId = null;             // null = adding new; otherwise the id being edited
+
+/* ---------- SAVING AND LOADING ---------- */
+function loadProjects() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : starterProjects();
+  } catch (e) {
+    return [];   // if saved data is damaged, start empty rather than crash
+  }
+}
+function saveProjects() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+}
+// Example data so the first launch isn't empty. Delete these freely.
+function starterProjects() {
+  return [
+    { id: makeId(), title: "LED blinker circuit", description: "555 timer on a breadboard",
+      category: "EEE", status: "In progress",
+      tasks: [{ text: "Pick resistor values", done: true },
+              { text: "Build on breadboard", done: false },
+              { text: "Measure frequency with multimeter", done: false }] },
+    { id: makeId(), title: "Personal dashboard app", description: "This very app!",
+      category: "Coding", status: "In progress",
+      tasks: [{ text: "Get it running", done: true },
+              { text: "Change the accent colour", done: false }] }
+  ];
+}
+function makeId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ---------- HELPERS ---------- */
+function progressOf(p) {
+  if (p.tasks.length === 0) return p.status === "Completed" ? 100 : 0;
+  const done = p.tasks.filter(t => t.done).length;
+  return Math.round((done / p.tasks.length) * 100);
+}
+// Stops text typed by the user from being treated as code (a basic safety step)
+function esc(text) {
+  const d = document.createElement("div");
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+/* ---------- DRAWING THE SCREEN ---------- */
+function render() {
+  // Filter buttons
+  document.getElementById("filters").innerHTML = CATEGORIES.map(c =>
+    `<button class="btn small ${c === currentFilter ? "active" : ""}" data-filter="${c}">${c}</button>`
+  ).join("");
+
+  // Summary numbers
+  document.getElementById("statTotal").textContent = projects.length;
+  document.getElementById("statActive").textContent = projects.filter(p => p.status === "In progress").length;
+  document.getElementById("statDone").textContent = projects.filter(p => p.status === "Completed").length;
+
+  // Project cards
+  const shown = projects.filter(p => currentFilter === "All" || p.category === currentFilter);
+  const grid = document.getElementById("grid");
+
+  if (shown.length === 0) {
+    grid.innerHTML = `<div class="empty">No projects here yet. Click "+ Add project" to start.</div>`;
+    return;
+  }
+
+  grid.innerHTML = shown.map(p => {
+    const pct = progressOf(p);
+    const tasksHtml = p.tasks.map((t, i) => `
+      <li class="${t.done ? "done" : ""}">
+        <input type="checkbox" ${t.done ? "checked" : ""} data-task="${p.id}:${i}">
+        <span>${esc(t.text)}</span>
+      </li>`).join("");
+
+    return `
+      <article class="card" data-category="${p.category}">
+        <h3>${esc(p.title)}</h3>
+        ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ""}
+        <div class="meta">
+          <span class="tag">${p.category}</span>
+          <span class="tag status">${p.status}</span>
+        </div>
+        <div>
+          <div class="progress-label"><span>Progress</span><span>${pct}%</span></div>
+          <div class="bar"><div style="width:${pct}%"></div></div>
+        </div>
+        ${p.tasks.length ? `<ul class="tasks">${tasksHtml}</ul>` : `<p class="desc">No tasks yet.</p>`}
+        <div class="card-actions">
+          <button class="btn small" data-edit="${p.id}">Edit</button>
+          <button class="btn small danger" data-delete="${p.id}">Delete</button>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+/* ---------- THE ADD / EDIT FORM ---------- */
+const modal = document.getElementById("modal");
+
+function openForm(project) {
+  editingId = project ? project.id : null;
+  document.getElementById("modalTitle").textContent = project ? "Edit project" : "Add project";
+  document.getElementById("fTitle").value = project ? project.title : "";
+  document.getElementById("fDesc").value = project ? project.description : "";
+  document.getElementById("fCategory").value = project ? project.category : "EEE";
+  document.getElementById("fStatus").value = project ? project.status : "Idea";
+  document.getElementById("fTasks").value = project ? project.tasks.map(t => t.text).join("\n") : "";
+  modal.classList.add("open");
+  document.getElementById("fTitle").focus();
+}
+function closeForm() { modal.classList.remove("open"); }
+
+document.getElementById("form").addEventListener("submit", function (event) {
+  event.preventDefault();   // stop the browser reloading the page
+
+  const title = document.getElementById("fTitle").value.trim();
+  if (!title) return;
+
+  // Turn the textarea lines into task objects
+  const lines = document.getElementById("fTasks").value
+    .split("\n").map(l => l.trim()).filter(l => l !== "");
+
+  let oldTasks = [];
+  if (editingId) oldTasks = projects.find(p => p.id === editingId).tasks;
+
+  // Keep the "done" tick for tasks whose text didn't change
+  const tasks = lines.map(text => {
+    const match = oldTasks.find(t => t.text === text);
+    return { text: text, done: match ? match.done : false };
+  });
+
+  const data = {
+    title: title,
+    description: document.getElementById("fDesc").value.trim(),
+    category: document.getElementById("fCategory").value,
+    status: document.getElementById("fStatus").value,
+    tasks: tasks
+  };
+
+  if (editingId) {
+    const p = projects.find(p => p.id === editingId);
+    Object.assign(p, data);                         // EDIT: update existing
+  } else {
+    projects.unshift({ id: makeId(), ...data });    // ADD: put new one first
+  }
+
+  saveProjects();
+  render();
+  closeForm();
+});
+
+/* ---------- CLICK HANDLING ---------- */
+document.getElementById("addBtn").addEventListener("click", () => openForm(null));
+document.getElementById("cancelBtn").addEventListener("click", closeForm);
+modal.addEventListener("click", e => { if (e.target === modal) closeForm(); });  // click outside to close
+
+// One listener for everything inside the page (filters, edit, delete)
+document.addEventListener("click", function (e) {
+  const filter = e.target.dataset.filter;
+  const editId = e.target.dataset.edit;
+  const deleteId = e.target.dataset.delete;
+
+  if (filter) { currentFilter = filter; render(); }
+  if (editId) { openForm(projects.find(p => p.id === editId)); }
+  if (deleteId) {
+    const p = projects.find(p => p.id === deleteId);
+    if (confirm(`Delete "${p.title}"? This cannot be undone.`)) {
+      projects = projects.filter(x => x.id !== deleteId);   // DELETE: keep everything else
+      saveProjects();
+      render();
+    }
+  }
+});
+
+// Ticking a task checkbox
+document.addEventListener("change", function (e) {
+  const key = e.target.dataset.task;
+  if (!key) return;
+  const [id, index] = key.split(":");
+  const p = projects.find(p => p.id === id);
+  p.tasks[Number(index)].done = e.target.checked;
+  saveProjects();
+  render();
+});
+
+/* ---------- BACKUP: EXPORT AND IMPORT ---------- */
+document.getElementById("exportBtn").addEventListener("click", function () {
+  const blob = new Blob([JSON.stringify(projects, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "projects-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+  link.click();
+});
+document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function () {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error("Not a project list");
+      if (confirm("This will replace your current projects with the backup. Continue?")) {
+        projects = data;
+        saveProjects();
+        render();
+      }
+    } catch (err) {
+      alert("That file isn't a valid backup.");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";   // lets you pick the same file again later
+});
+
+/* ---------- START THE APP ---------- */
+render();
+</script>
+</body>
+</html>
